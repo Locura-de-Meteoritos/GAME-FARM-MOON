@@ -1,13 +1,14 @@
 import { useRef, useEffect, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { PointerLockControls } from '@react-three/drei'
-import { useBox } from '@react-three/cannon'
 import * as THREE from 'three'
-import Astronaut from './Astronaut'
 
 export default function PlayerController() {
   const { camera } = useThree()
   const controlsRef = useRef()
+  const playerPosition = useRef(new THREE.Vector3(0, 2, 5))
+  const velocity = useRef(new THREE.Vector3(0, 0, 0))
+  const isOnGround = useRef(true)
   
   // Estado del movimiento
   const [movement, setMovement] = useState({
@@ -17,26 +18,6 @@ export default function PlayerController() {
     right: false,
     jump: false
   })
-
-  // Cuerpo físico del jugador
-  const [playerRef, playerApi] = useBox(() => ({
-    mass: 1,
-    position: [0, 2, 5],
-    args: [0.6, 1.8, 0.6],
-    material: { friction: 0.1, restitution: 0.1 }
-  }))
-
-  // Velocidad y dirección
-  const velocity = useRef([0, 0, 0])
-  const direction = useRef(new THREE.Vector3())
-  const frontVector = useRef(new THREE.Vector3())
-  const sideVector = useRef(new THREE.Vector3())
-
-  // Suscribirse a la velocidad del cuerpo físico
-  useEffect(() => {
-    const unsubscribe = playerApi.velocity.subscribe((v) => velocity.current = v)
-    return unsubscribe
-  }, [playerApi.velocity])
 
   // Manejo de eventos de teclado
   useEffect(() => {
@@ -99,49 +80,58 @@ export default function PlayerController() {
   }, [])
 
   // Actualizar movimiento y cámara
-  useFrame(() => {
-    if (!playerRef.current) return
+  useFrame((state, delta) => {
+    const speed = 5 // Velocidad de movimiento
+    const jumpForce = 6 // Fuerza de salto
+    const gravity = -1.6 // Gravedad lunar
+    const groundLevel = 0.5 // Nivel del suelo
 
     // Obtener la dirección de la cámara
-    frontVector.current.set(0, 0, Number(movement.backward) - Number(movement.forward))
-    sideVector.current.set(Number(movement.left) - Number(movement.right), 0, 0)
+    const direction = new THREE.Vector3()
+    const frontVector = new THREE.Vector3(0, 0, Number(movement.backward) - Number(movement.forward))
+    const sideVector = new THREE.Vector3(Number(movement.left) - Number(movement.right), 0, 0)
     
-    direction.current
-      .subVectors(frontVector.current, sideVector.current)
+    direction
+      .subVectors(frontVector, sideVector)
       .normalize()
-      .multiplyScalar(3) // Velocidad de movimiento
+      .multiplyScalar(speed * delta)
       .applyEuler(camera.rotation)
 
     // Aplicar movimiento horizontal
-    playerApi.velocity.set(direction.current.x, velocity.current[1], direction.current.z)
-
-    // Salto (gravedad lunar más baja)
-    if (movement.jump && Math.abs(velocity.current[1]) < 0.05) {
-      playerApi.velocity.set(velocity.current[0], 4, velocity.current[2])
+    if (movement.forward || movement.backward || movement.left || movement.right) {
+      playerPosition.current.add(direction)
     }
 
-    // Posicionar la cámara en la posición del jugador
-    const playerPosition = playerRef.current.position
-    camera.position.set(
-      playerPosition.x,
-      playerPosition.y + 0.5, // Altura de los ojos
-      playerPosition.z
-    )
+    // Aplicar gravedad
+    if (!isOnGround.current) {
+      velocity.current.y += gravity * delta
+    }
+
+    // Salto
+    if (movement.jump && isOnGround.current) {
+      velocity.current.y = jumpForce
+      isOnGround.current = false
+    }
+
+    // Aplicar velocidad vertical
+    playerPosition.current.y += velocity.current.y * delta
+
+    // Comprobar colisión con el suelo
+    if (playerPosition.current.y <= groundLevel) {
+      playerPosition.current.y = groundLevel
+      velocity.current.y = 0
+      isOnGround.current = true
+    }
+
+    // Actualizar posición de la cámara
+    camera.position.copy(playerPosition.current)
+    camera.position.y += 0.5 // Altura de los ojos
   })
 
   return (
     <>
       {/* Controles de puntero bloqueado */}
       <PointerLockControls ref={controlsRef} />
-      
-      {/* Cuerpo invisible del jugador para físicas */}
-      <mesh ref={playerRef} visible={false}>
-        <boxGeometry args={[0.6, 1.8, 0.6]} />
-        <meshStandardMaterial transparent opacity={0} />
-      </mesh>
-      
-      {/* Modelo visual del astronauta (opcional, para tercera persona) */}
-      {/* <Astronaut position={[0, 0, 0]} /> */}
     </>
   )
 }

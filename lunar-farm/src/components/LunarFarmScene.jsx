@@ -1,4 +1,3 @@
-import { Physics } from '@react-three/cannon'
 import LunarTerrain from './environment/LunarTerrain'
 import Skybox from './environment/Skybox'
 import Lighting from './environment/Lighting'
@@ -9,7 +8,7 @@ import ParticleEffects from './effects/ParticleEffects'
 
 export default function LunarFarmScene() {
   return (
-    <Physics gravity={[0, -1.6, 0]}> {/* Gravedad lunar (1/6 de la terrestre) */}
+    <>
       {/* Iluminación */}
       <Lighting />
       
@@ -30,6 +29,6 @@ export default function LunarFarmScene() {
       
       {/* Efectos de partículas */}
       <ParticleEffects />
-    </Physics>
+    </>
   )
 }

@@ -1,13 +1,6 @@
-import { usePlane } from '@react-three/cannon'
 import { useMemo } from 'react'
 
 export default function LunarTerrain() {
-  const [ref] = usePlane(() => ({ 
-    rotation: [-Math.PI / 2, 0, 0], 
-    position: [0, -0.5, 0],
-    type: 'Static'
-  }))
-
   // Generar cráteres aleatorios
   const craters = useMemo(() => {
     const craterArray = []
@@ -61,8 +54,8 @@ export default function LunarTerrain() {
   return (
     <group>
       {/* Superficie lunar principal */}
-      <mesh ref={ref} receiveShadow>
-        <planeGeometry args={[100, 100, 32, 32]} />
+      <mesh position={[0, -0.5, 0]} receiveShadow>
+        <planeGeometry args={[100, 100, 32, 32]} rotation={[-Math.PI / 2, 0, 0]} />
         <meshStandardMaterial 
           color="#6a6a6a"
           roughness={0.9}
